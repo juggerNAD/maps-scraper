@@ -3,375 +3,643 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-<meta name="theme-color" content="#0b1220" />
+<meta name="theme-color" content="#0a0a0a" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
-<title>Maps Lead Scout</title>
-<link rel="manifest" href="data:application/json,{%22name%22:%22Maps%20Lead%20Scout%22,%22short_name%22:%22Leads%22,%22display%22:%22standalone%22,%22background_color%22:%22%230b1220%22,%22theme_color%22:%22%230b1220%22,%22start_url%22:%22/%22,%22icons%22:[]}" />
+<title>Scout — Maps to leads</title>
+
+<!-- Distinctive display + refined mono pairing -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
   :root {
-    --bg: #0b1220;
-    --panel: #131c30;
-    --panel-2: #1a2540;
-    --border: #25324d;
-    --text: #e8edf7;
-    --muted: #8a96b2;
-    --accent: #4f8cff;
-    --accent-2: #3568d4;
-    --success: #2bd47b;
-    --danger: #ff5d6c;
-    --pill: #233152;
+    /* dark palette — warm graphite, not the default cold blue */
+    --bg:        #0a0a0a;
+    --bg-soft:   #131313;
+    --surface:   #1a1a1a;
+    --surface-2: #232323;
+    --hairline:  rgba(255,255,255,0.07);
+    --hairline-2:rgba(255,255,255,0.12);
+    --text:      #f5f4f0;
+    --text-2:    #a8a59f;
+    --text-3:    #6e6c66;
+    /* signature accent — warm lime, distinctive */
+    --accent:    #c8ff00;
+    --accent-ink:#0a0a0a;
+    --positive:  #8effb4;
+    --warning:   #ffb47a;
+    --danger:    #ff7a85;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+
   html, body {
     margin: 0; padding: 0;
-    background: #06080f;
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    height: 100vh; height: 100dvh;
     overflow: hidden;
-    height: 100vh;
-    height: 100dvh;
+    background: #000;
+    color: var(--text);
+    font-family: "Geist", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.005em;
   }
 
-  /* === Phone frame ===
-     On desktop: visible 9:16 phone mockup centered.
-     On mobile: fills the whole screen, no frame. */
+  /* ── Stage with desktop phone frame ─────────────────────────── */
   .stage {
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100vw; height: 100vh; height: 100dvh;
+    display: grid; place-items: center;
     background:
-      radial-gradient(1200px 800px at 20% 0%, #16213c 0%, transparent 60%),
-      radial-gradient(1000px 600px at 80% 100%, #1a1f3c 0%, transparent 60%),
-      #06080f;
+      radial-gradient(800px 600px at 15% 10%, rgba(200,255,0,0.04), transparent 60%),
+      radial-gradient(900px 700px at 90% 100%, rgba(255,200,100,0.03), transparent 55%),
+      #050505;
   }
   .phone {
-    width: 100%;
-    height: 100%;
-    background: var(--bg);
     position: relative;
+    width: 100%; height: 100%;
+    background: var(--bg);
     overflow: hidden;
     display: flex;
     flex-direction: column;
   }
-  @media (min-width: 700px) {
+  @media (min-width: 720px) {
     .phone {
-      aspect-ratio: 9 / 16;
+      aspect-ratio: 9 / 19.5;
       width: auto;
-      height: 92vh;
-      max-height: 900px;
-      border-radius: 38px;
-      border: 10px solid #0a0d18;
+      height: 94vh;
+      max-height: 920px;
+      border-radius: 48px;
+      border: 11px solid #000;
       box-shadow:
-        0 50px 80px -20px rgba(0,0,0,0.7),
-        0 0 0 1px #1f2940 inset;
+        0 60px 120px -30px rgba(0,0,0,0.9),
+        0 0 0 1px rgba(255,255,255,0.04) inset,
+        0 0 0 2px rgba(200,255,0,0.02);
     }
     .phone::before {
-      content: "";
-      position: absolute;
-      top: 12px; left: 50%;
-      transform: translateX(-50%);
-      width: 110px; height: 26px;
-      background: #06080f;
-      border-radius: 16px;
-      z-index: 50;
+      content: ""; position: absolute;
+      top: 10px; left: 50%; transform: translateX(-50%);
+      width: 120px; height: 32px;
+      background: #000; border-radius: 20px;
+      z-index: 100;
     }
   }
 
-  /* === Status bar === */
+  /* ── Status bar ─────────────────────────────────────────────── */
   .statusbar {
-    height: 34px;
-    flex: 0 0 34px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
-    font-size: 13px;
-    font-weight: 600;
+    height: 44px; flex: 0 0 44px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+    font-family: "Geist Mono", monospace;
+    font-size: 12px; font-weight: 500;
     color: var(--text);
+    letter-spacing: 0;
   }
-  .statusbar .right { display: flex; gap: 6px; align-items: center; }
-  .signal-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text); display: inline-block; }
+  .statusbar .right { display: inline-flex; align-items: center; gap: 6px; }
+  .statusbar svg { width: 14px; height: 14px; opacity: 0.9; }
 
-  /* === App header === */
-  .appbar {
-    padding: 14px 20px 8px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .logo {
-    width: 38px; height: 38px;
-    border-radius: 11px;
-    background: linear-gradient(135deg, var(--accent), #6aa1ff);
-    display: grid; place-items: center;
-    font-weight: 800;
-    font-size: 18px;
-    color: white;
-    box-shadow: 0 6px 16px -6px var(--accent);
-  }
-  .appbar h1 {
-    font-size: 19px; margin: 0;
-    letter-spacing: -0.01em;
-  }
-  .appbar p {
-    margin: 2px 0 0; font-size: 12px; color: var(--muted);
-  }
-
-  /* === Scroll body === */
+  /* ── App scroll body ────────────────────────────────────────── */
   .body {
     flex: 1 1 auto;
     overflow-y: auto;
-    padding: 12px 16px 24px;
+    overflow-x: hidden;
+    padding: 0;
     -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
   }
-  .body::-webkit-scrollbar { width: 0; }
+  .body::-webkit-scrollbar { width: 0; display: none; }
 
-  /* === Form card === */
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 16px;
-    margin-bottom: 14px;
+  /* ── Hero (landing) ─────────────────────────────────────────── */
+  .hero {
+    padding: 16px 24px 4px;
   }
-  label {
-    display: block;
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 6px;
+  .eyebrow {
+    font-family: "Geist Mono", monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    color: var(--text-3);
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: fadeUp 0.7s 0.05s ease-out forwards;
   }
-  input, select {
-    width: 100%;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
+  .eyebrow::before {
+    content: ""; width: 18px; height: 1px; background: var(--text-3);
+  }
+  .display {
+    font-family: "Instrument Serif", "Times New Roman", serif;
+    font-weight: 400;
+    font-size: 44px;
+    line-height: 0.96;
+    letter-spacing: -0.02em;
+    margin: 0;
     color: var(--text);
-    border-radius: 12px;
-    padding: 13px 14px;
-    font-size: 15px;
-    font-family: inherit;
-    outline: none;
-    transition: border-color .15s, background .15s;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.15s ease-out forwards;
   }
-  input:focus, select:focus {
-    border-color: var(--accent);
-    background: #1c2848;
+  .display em {
+    font-style: italic;
+    color: var(--accent);
   }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .field { margin-bottom: 12px; }
-  .field:last-child { margin-bottom: 0; }
+  .lede {
+    margin: 14px 0 0;
+    font-size: 13px;
+    color: var(--text-2);
+    line-height: 1.5;
+    max-width: 280px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.3s ease-out forwards;
+  }
 
-  /* === Buttons === */
-  button {
-    background: linear-gradient(180deg, var(--accent), var(--accent-2));
-    color: white;
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Search composer ────────────────────────────────────────── */
+  .composer {
+    margin: 22px 20px 0;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 24px;
+    padding: 6px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.45s ease-out forwards;
+  }
+  .composer .input-wrap {
+    display: flex; align-items: center;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+  .composer .input-wrap svg {
+    flex: 0 0 18px; width: 18px; height: 18px;
+    color: var(--text-3);
+  }
+  .composer input {
+    flex: 1; min-width: 0;
+    background: transparent;
+    border: 0; outline: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 400;
+    padding: 0;
+    letter-spacing: -0.01em;
+  }
+  .composer input::placeholder { color: var(--text-3); }
+  .composer .controls {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    padding: 6px;
+    border-top: 1px solid var(--hairline);
+  }
+  .composer select {
+    appearance: none; -webkit-appearance: none;
+    background: var(--surface-2);
+    border: 0;
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a8a59f' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+  .go {
+    background: var(--accent);
+    color: var(--accent-ink);
     border: 0;
     border-radius: 14px;
-    padding: 14px;
-    width: 100%;
-    font-size: 15px;
-    font-weight: 700;
+    padding: 12px 18px;
     font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
     cursor: pointer;
-    box-shadow: 0 8px 20px -10px var(--accent);
-    transition: transform .08s ease;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: transform 0.1s ease, background 0.2s;
   }
-  button:active { transform: scale(0.985); }
-  button:disabled {
-    opacity: 0.5; cursor: not-allowed;
-    box-shadow: none;
+  .go:hover:not(:disabled) { background: #d5ff33; }
+  .go:active:not(:disabled) { transform: scale(0.96); }
+  .go:disabled { opacity: 0.4; cursor: not-allowed; }
+  .go svg { width: 14px; height: 14px; }
+
+  /* ── Suggestion chips ───────────────────────────────────────── */
+  .chips {
+    display: flex;
+    gap: 8px;
+    padding: 18px 20px 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.6s ease-out forwards;
   }
-  button.ghost {
-    background: var(--panel-2);
-    color: var(--text);
-    box-shadow: none;
-    border: 1px solid var(--border);
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto;
+    background: transparent;
+    border: 1px solid var(--hairline-2);
+    color: var(--text-2);
+    border-radius: 99px;
+    padding: 8px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .chip:hover { color: var(--text); border-color: var(--text-3); }
+
+  /* ── Section divider with label ─────────────────────────────── */
+  .section-head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 22px 24px 12px;
+  }
+  .section-head .label {
+    font-family: "Geist Mono", monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .section-head .line {
+    flex: 1; height: 1px; background: var(--hairline);
+  }
+  .section-head .count {
+    font-family: "Geist Mono", monospace;
+    font-size: 11px;
+    color: var(--text-2);
   }
 
-  /* === Progress === */
-  .progress {
-    margin-top: 12px;
-    background: var(--panel-2);
-    border-radius: 99px;
-    height: 8px;
+  /* ── Progress sheet ─────────────────────────────────────────── */
+  .progress-sheet {
+    margin: 0 20px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 24px;
+    overflow: hidden;
+    animation: fadeUp 0.4s ease-out;
+  }
+  .progress-head {
+    padding: 18px 20px 14px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pulse-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(200,255,0,0.7);
+    animation: pulse 1.6s infinite;
+  }
+  .pulse-dot.done { background: var(--positive); animation: none; }
+  .pulse-dot.error { background: var(--danger); animation: none; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0   rgba(200,255,0,0.6); }
+    70%  { box-shadow: 0 0 0 10px rgba(200,255,0,0); }
+    100% { box-shadow: 0 0 0 0   rgba(200,255,0,0); }
+  }
+  .progress-title {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .progress-pct {
+    font-family: "Geist Mono", monospace;
+    font-size: 12px;
+    color: var(--text-2);
+    font-feature-settings: "tnum";
+  }
+  .progress-bar {
+    height: 2px;
+    background: var(--surface-2);
     overflow: hidden;
   }
-  .progress > span {
-    display: block;
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), #6aa1ff);
+  .progress-bar > span {
+    display: block; height: 100%;
+    background: var(--accent);
     width: 0%;
-    transition: width .4s ease;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .stage-line {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 8px;
-    min-height: 16px;
+  .progress-stage {
+    padding: 12px 20px;
+    font-family: "Geist Mono", monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--hairline);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .stats {
-    display: flex; gap: 8px;
-    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
   }
   .stat {
-    flex: 1;
-    background: var(--panel-2);
-    border-radius: 12px;
-    padding: 10px;
+    padding: 18px 14px;
     text-align: center;
+    border-right: 1px solid var(--hairline);
   }
-  .stat b { display: block; font-size: 18px; color: var(--text); }
-  .stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-
-  /* === Result rows === */
-  .result {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 14px;
-    margin-bottom: 10px;
-  }
-  .result h3 {
-    margin: 0 0 4px;
-    font-size: 15px;
-    line-height: 1.25;
-  }
-  .result .meta { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
-  .result .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .pill {
-    background: var(--pill);
+  .stat:last-child { border-right: 0; }
+  .stat .v {
+    font-family: "Instrument Serif", serif;
+    font-size: 28px;
+    line-height: 1;
+    letter-spacing: -0.02em;
     color: var(--text);
-    border-radius: 99px;
-    padding: 4px 10px;
+    font-feature-settings: "tnum";
+  }
+  .stat .l {
+    margin-top: 6px;
+    font-family: "Geist Mono", monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  /* ── Result cards ───────────────────────────────────────────── */
+  .results {
+    padding: 0 20px;
+  }
+  .result {
+    padding: 20px 4px;
+    border-bottom: 1px solid var(--hairline);
+    animation: cardIn 0.45s ease-out;
+  }
+  .result:last-child { border-bottom: 0; }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .result-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 8px;
+  }
+  .result-idx {
+    font-family: "Geist Mono", monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    font-feature-settings: "tnum";
+    flex: 0 0 auto;
+  }
+  .result-name {
+    flex: 1;
+    font-family: "Instrument Serif", serif;
+    font-size: 22px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--text);
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .result-rating {
+    flex: 0 0 auto;
+    font-family: "Geist Mono", monospace;
     font-size: 11px;
-    text-decoration: none;
+    color: var(--warning);
+    display: inline-flex; align-items: center; gap: 4px;
+    font-feature-settings: "tnum";
+  }
+  .result-meta {
+    font-size: 12px;
+    color: var(--text-3);
+    margin: 4px 0 12px;
+    padding-left: 30px;
+    line-height: 1.5;
+  }
+  .result-meta .dot { color: var(--text-3); margin: 0 6px; }
+  .actions {
+    padding-left: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .action {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    color: var(--text-2);
+    border-radius: 8px;
+    padding: 7px 11px;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .pill.email { background: #14352b; color: #6ee7a7; }
-  .pill.phone { background: #2b1f3d; color: #c1a9ff; }
-  .pill.web   { background: #1a2c4a; color: #8cbcff; }
-  .pill.rating{ background: #3a2a14; color: #ffc678; }
+  .action:hover { border-color: var(--hairline-2); color: var(--text); }
+  .action svg { width: 12px; height: 12px; flex: 0 0 12px; }
+  .action.email { background: rgba(200,255,0,0.06); border-color: rgba(200,255,0,0.2); color: var(--accent); }
+  .action.email:hover { background: rgba(200,255,0,0.12); }
 
   .empty {
+    margin: 16px 20px 0;
+    padding: 32px 20px;
+    border: 1px dashed var(--hairline-2);
+    border-radius: 24px;
     text-align: center;
-    color: var(--muted);
+  }
+  .empty .glyph {
+    font-family: "Instrument Serif", serif;
+    font-style: italic;
+    font-size: 48px;
+    color: var(--text-3);
+    line-height: 1;
+    margin-bottom: 14px;
+  }
+  .empty p {
+    margin: 0;
+    color: var(--text-2);
     font-size: 13px;
-    padding: 30px 10px;
+    max-width: 220px;
+    margin-inline: auto;
+    line-height: 1.5;
   }
 
-  .footer {
+  /* ── Footer dock ────────────────────────────────────────────── */
+  .dock {
     flex: 0 0 auto;
-    padding: 10px 16px 14px;
-    border-top: 1px solid var(--border);
-    background: rgba(11,18,32,.85);
-    backdrop-filter: blur(8px);
+    padding: 14px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--hairline);
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
   }
-  .footer .row { gap: 8px; }
-  .footer button { padding: 12px; font-size: 13px; }
-
-  .toast {
-    position: absolute; left: 50%; bottom: 88px;
-    transform: translateX(-50%) translateY(20px);
-    background: #25324d;
+  .dock-btn {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
     color: var(--text);
-    padding: 10px 16px;
+    border-radius: 14px;
+    padding: 13px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.15s;
+  }
+  .dock-btn:hover:not(:disabled) { border-color: var(--hairline-2); background: var(--surface-2); }
+  .dock-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .dock-btn svg { width: 13px; height: 13px; }
+  .dock-btn.primary {
+    background: var(--accent); color: var(--accent-ink);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .dock-btn.primary:hover:not(:disabled) { background: #d5ff33; }
+
+  /* ── Toast ──────────────────────────────────────────────────── */
+  .toast {
+    position: absolute;
+    left: 50%; bottom: 110px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text);
+    color: var(--bg);
+    padding: 12px 18px;
     border-radius: 99px;
     font-size: 12px;
+    font-weight: 500;
     opacity: 0;
     pointer-events: none;
-    transition: opacity .2s, transform .2s;
-    z-index: 100;
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 200;
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--accent); color: var(--accent-ink); }
 </style>
 </head>
 <body>
 <div class="stage">
   <div class="phone">
+
     <!-- status bar -->
     <div class="statusbar">
       <span id="clock">9:41</span>
       <div class="right">
-        <span class="signal-dot"></span>
-        <span class="signal-dot"></span>
-        <span class="signal-dot"></span>
-        <span>5G</span>
-        <span>100%</span>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 17h2v3H2zm5-3h2v6H7zm5-3h2v9h-2zm5-4h2v13h-2z"/></svg>
+        <span style="font-size:10px;letter-spacing:0.05em">5G</span>
+        <svg viewBox="0 0 26 14" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="22" height="13" rx="3"/><rect x="2" y="2" width="19" height="10" rx="1.5" fill="currentColor"/><rect x="23" y="4" width="2" height="6" rx="0.5" fill="currentColor"/></svg>
       </div>
     </div>
 
-    <!-- app bar -->
-    <div class="appbar">
-      <div class="logo">L</div>
-      <div>
-        <h1>Lead Scout</h1>
-        <p>Google Maps → contacts in one tap</p>
-      </div>
-    </div>
-
-    <!-- body -->
+    <!-- main scroll -->
     <div class="body" id="body">
-      <!-- Search form -->
-      <div class="card" id="form-card">
-        <div class="field">
-          <label for="q">Search query</label>
-          <input id="q" placeholder="dentists in Manila" autocomplete="off" />
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="eyebrow">Scout — v1</div>
+        <h1 class="display">
+          Turn maps<br/>
+          into <em>leads.</em>
+        </h1>
+        <p class="lede">Search Google Maps, pull every business, and harvest contact emails — automatically.</p>
+      </div>
+
+      <!-- Composer -->
+      <div class="composer">
+        <div class="input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="q" placeholder="Search any business, any city…" autocomplete="off" />
         </div>
-        <div class="row">
-          <div class="field">
-            <label for="max">Limit</label>
-            <select id="max">
-              <option value="">All results</option>
-              <option value="10">10</option>
-              <option value="25" selected>25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>&nbsp;</label>
-            <button id="go">Start scraping</button>
-          </div>
+        <div class="controls">
+          <select id="max" aria-label="Result limit">
+            <option value="10">10 results</option>
+            <option value="25" selected>25 results</option>
+            <option value="50">50 results</option>
+            <option value="100">100 results</option>
+            <option value="">All results</option>
+          </select>
+          <button class="go" id="go">
+            Scout
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
         </div>
       </div>
 
-      <!-- Progress -->
-      <div class="card" id="progress-card" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <strong id="status-title">Working…</strong>
-          <span id="status-pct" style="font-size:12px;color:var(--muted)">0%</span>
+      <!-- Suggestion chips -->
+      <div class="chips" id="chips">
+        <button class="chip" data-q="dentists in Australia">Dentists in Australia</button>
+        <button class="chip" data-q="construction company in Los Angeles">Construction in LA</button>
+        <button class="chip" data-q="real estate agents in Sydney">Realtors in Sydney</button>
+        <button class="chip" data-q="law firms in London">Law firms · London</button>
+        <button class="chip" data-q="coffee shops in Brooklyn">Coffee · Brooklyn</button>
+      </div>
+
+      <!-- Progress (hidden until run) -->
+      <div id="progress-wrap" style="display:none">
+        <div class="section-head">
+          <span class="label" id="progress-label">In progress</span>
+          <span class="line"></span>
+          <span class="count" id="progress-elapsed">0s</span>
         </div>
-        <div class="progress"><span id="bar"></span></div>
-        <div class="stage-line" id="stage-line">Starting…</div>
-        <div class="stats">
-          <div class="stat"><b id="stat-scraped">0</b><span>Scraped</span></div>
-          <div class="stat"><b id="stat-total">0</b><span>Found</span></div>
-          <div class="stat"><b id="stat-emails">0</b><span>Emails</span></div>
+        <div class="progress-sheet">
+          <div class="progress-head">
+            <span class="pulse-dot" id="pulse"></span>
+            <span class="progress-title" id="status-title">Initialising…</span>
+            <span class="progress-pct" id="status-pct">0%</span>
+          </div>
+          <div class="progress-bar"><span id="bar"></span></div>
+          <div class="progress-stage" id="stage-line">Waiting to start</div>
+          <div class="stats">
+            <div class="stat"><div class="v" id="stat-scraped">0</div><div class="l">Scraped</div></div>
+            <div class="stat"><div class="v" id="stat-total">0</div><div class="l">Found</div></div>
+            <div class="stat"><div class="v" id="stat-emails">0</div><div class="l">Emails</div></div>
+          </div>
         </div>
       </div>
 
       <!-- Results -->
-      <div id="results">
-        <div class="empty" id="empty">No results yet. Run a search to see leads here.</div>
+      <div id="results-wrap">
+        <div class="section-head" id="results-head" style="display:none">
+          <span class="label">Leads</span>
+          <span class="line"></span>
+          <span class="count" id="results-count">0</span>
+        </div>
+        <div class="results" id="results"></div>
+
+        <div class="empty" id="empty">
+          <div class="glyph">~</div>
+          <p>No leads yet. Type a query above or tap a suggestion to begin.</p>
+        </div>
       </div>
+
+      <div style="height: 30px"></div>
     </div>
 
-    <!-- footer actions -->
-    <div class="footer">
-      <div class="row">
-        <button class="ghost" id="reset">New search</button>
-        <button id="export" disabled>Export CSV</button>
-      </div>
+    <!-- Dock -->
+    <div class="dock">
+      <button class="dock-btn" id="reset">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        New search
+      </button>
+      <button class="dock-btn primary" id="export" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        Export CSV
+      </button>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -379,24 +647,30 @@
 </div>
 
 <script>
-  // Clock in the status bar
+  // Clock
   function tickClock() {
     const d = new Date();
     const h = d.getHours() % 12 || 12;
     const m = String(d.getMinutes()).padStart(2, "0");
     document.getElementById("clock").textContent = `${h}:${m}`;
   }
-  tickClock(); setInterval(tickClock, 30_000);
+  tickClock(); setInterval(tickClock, 30000);
 
   let currentJobId = null;
   let pollTimer = null;
+  let startedAt = null;
+  let elapsedTimer = null;
+  let lastRenderedCount = 0;
 
   const $ = (id) => document.getElementById(id);
-  function toast(msg) {
+
+  function toast(msg, success = false) {
     const t = $("toast");
     t.textContent = msg;
+    t.classList.toggle("success", success);
     t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 1800);
+    clearTimeout(t._h);
+    t._h = setTimeout(() => t.classList.remove("show"), 2200);
   }
 
   $("go").addEventListener("click", startScrape);
@@ -406,33 +680,68 @@
     if (currentJobId) window.location.href = `/api/export/${currentJobId}`;
   });
 
+  document.querySelectorAll(".chip").forEach((c) => {
+    c.addEventListener("click", () => {
+      $("q").value = c.dataset.q;
+      $("q").focus();
+    });
+  });
+
   function resetUI() {
     if (pollTimer) clearInterval(pollTimer);
+    if (elapsedTimer) clearInterval(elapsedTimer);
     currentJobId = null;
-    $("progress-card").style.display = "none";
-    $("results").innerHTML = '<div class="empty" id="empty">No results yet. Run a search to see leads here.</div>';
+    lastRenderedCount = 0;
+    $("progress-wrap").style.display = "none";
+    $("results").innerHTML = "";
+    $("results-head").style.display = "none";
+    $("empty").style.display = "block";
     $("export").disabled = true;
     $("go").disabled = false;
     $("q").value = "";
     $("q").focus();
   }
 
+  function startElapsed() {
+    startedAt = Date.now();
+    elapsedTimer = setInterval(() => {
+      const s = Math.floor((Date.now() - startedAt) / 1000);
+      const m = Math.floor(s / 60);
+      $("progress-elapsed").textContent = m > 0 ? `${m}m ${s % 60}s` : `${s}s`;
+    }, 1000);
+  }
+
   async function startScrape() {
     const query = $("q").value.trim();
     const max = $("max").value;
-    if (!query) { toast("Type a search first"); return; }
+    if (!query) { toast("Enter a search query"); $("q").focus(); return; }
 
     $("go").disabled = true;
-    $("progress-card").style.display = "block";
+    $("empty").style.display = "none";
+    $("progress-wrap").style.display = "block";
+    $("results-head").style.display = "none";
     $("results").innerHTML = "";
+    lastRenderedCount = 0;
+
     $("bar").style.width = "0%";
     $("status-pct").textContent = "0%";
-    $("status-title").textContent = "Working…";
+    $("status-title").textContent = "Initialising…";
+    $("stage-line").textContent = "Spinning up scraper";
     $("stat-scraped").textContent = "0";
     $("stat-total").textContent = "0";
     $("stat-emails").textContent = "0";
-    $("stage-line").textContent = "Starting Playwright…";
     $("export").disabled = true;
+    $("pulse").className = "pulse-dot";
+    $("progress-label").textContent = "In progress";
+
+    // Auto-scroll the phone body so the progress card is in view —
+    // otherwise on tall hero + small viewport the user sees nothing happen.
+    setTimeout(() => {
+      const pw = $("progress-wrap");
+      if (pw) pw.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+
+    startElapsed();
 
     try {
       const r = await fetch("/api/scrape", {
@@ -440,13 +749,22 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, max_results: max || null }),
       });
-      const data = await r.json();
+      const text = await r.text();
+      if (!text) throw new Error(`Empty response (HTTP ${r.status})`);
+      let data;
+      try { data = JSON.parse(text); }
+      catch { throw new Error(`Non-JSON response: ${text.slice(0, 120)}`); }
       if (data.error) throw new Error(data.error);
       currentJobId = data.job_id;
       pollTimer = setInterval(poll, 1500);
     } catch (e) {
-      toast("Error: " + e.message);
+      clearInterval(elapsedTimer);
+      $("pulse").className = "pulse-dot error";
+      $("status-title").textContent = "Failed";
+      $("stage-line").textContent = e.message;
+      $("progress-label").textContent = "Error";
       $("go").disabled = false;
+      toast(e.message);
     }
   }
 
@@ -454,19 +772,27 @@
     if (!currentJobId) return;
     try {
       const r = await fetch(`/api/status/${currentJobId}`);
-      const job = await r.json();
-      if (!job) return;
+      const text = await r.text();
+      if (!text) return;
+      const job = JSON.parse(text);
       renderJob(job);
       if (job.status === "done" || job.status === "error") {
         clearInterval(pollTimer);
+        clearInterval(elapsedTimer);
         $("go").disabled = false;
         if (job.status === "error") {
+          $("pulse").className = "pulse-dot error";
           $("status-title").textContent = "Failed";
           $("stage-line").textContent = job.error || "Unknown error";
+          $("progress-label").textContent = "Error";
+          toast("Scrape failed");
         } else {
-          $("status-title").textContent = "Done";
-          $("export").disabled = (job.results || []).length === 0;
-          toast(`Done — ${(job.results || []).length} leads`);
+          $("pulse").className = "pulse-dot done";
+          $("status-title").textContent = "Complete";
+          $("progress-label").textContent = "Complete";
+          const count = (job.results || []).length;
+          $("export").disabled = count === 0;
+          toast(`${count} leads ready`, true);
         }
       }
     } catch (e) {
@@ -477,7 +803,8 @@
   function renderJob(job) {
     const total = job.total || 0;
     const scraped = job.scraped || 0;
-    const pct = total > 0 ? Math.min(100, Math.round((scraped / total) * 100)) : (job.status === "running" ? 5 : 0);
+    const pct = total > 0 ? Math.min(100, Math.round((scraped / total) * 100))
+              : (job.status === "running" ? 5 : 0);
     $("bar").style.width = pct + "%";
     $("status-pct").textContent = pct + "%";
     $("stage-line").textContent = job.stage || "";
@@ -489,10 +816,28 @@
     results.forEach((r) => { emailCount += (r.emails || []).length; });
     $("stat-emails").textContent = emailCount;
 
-    // Re-render only when count changed (cheap heuristic)
-    const container = $("results");
-    if (container.childElementCount !== results.length) {
-      container.innerHTML = results.map(renderResult).join("");
+    if (results.length !== lastRenderedCount) {
+      const wasFirst = lastRenderedCount === 0 && results.length > 0;
+      lastRenderedCount = results.length;
+      $("results-head").style.display = results.length > 0 ? "flex" : "none";
+      $("results-count").textContent = String(results.length).padStart(2, "0");
+      // pass index so numbering renders, append rather than wipe to preserve scroll
+      $("results").innerHTML = results.map((r, i) => renderResult(r, i)).join("");
+
+      // When the first result appears, scroll the phone body to bring
+      // the results section into view so the user actually sees activity.
+      if (wasFirst) {
+        setTimeout(() => {
+          const head = $("results-head");
+          if (head) head.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 200);
+      }
+    }
+
+    if (job.status === "running") {
+      $("status-title").textContent = scraped > 0
+        ? `Scraping business ${scraped} of ${total}`
+        : "Discovering listings";
     }
   }
 
@@ -502,20 +847,60 @@
     }[c]));
   }
 
-  function renderResult(r) {
-    const emails = (r.emails || []).map(
-      (e) => `<a class="pill email" href="mailto:${escapeHtml(e)}">✉ ${escapeHtml(e)}</a>`
-    ).join("");
-    const phone = r.phone ? `<a class="pill phone" href="tel:${escapeHtml(r.phone)}">📞 ${escapeHtml(r.phone)}</a>` : "";
-    const web = r.website ? `<a class="pill web" href="${escapeHtml(r.website)}" target="_blank" rel="noopener">🌐 site</a>` : "";
-    const rating = r.rating ? `<span class="pill rating">★ ${escapeHtml(r.rating)} (${escapeHtml(r.reviews || "0")})</span>` : "";
+  function truncate(s, n) {
+    s = String(s || "");
+    return s.length > n ? s.slice(0, n - 1) + "…" : s;
+  }
+
+  function renderResult(r, i) {
+    const idx = String(i + 1).padStart(2, "0");
+    const rating = r.rating
+      ? `<span class="result-rating">★ ${escapeHtml(r.rating)} <span style="color:var(--text-3)">·</span> ${escapeHtml(r.reviews || "0")}</span>`
+      : "";
+    const meta = [r.category, r.address].filter(Boolean)
+      .map(escapeHtml).join('<span class="dot">·</span>');
+
+    const actions = [];
+    if (r.phone) actions.push(
+      `<a class="action" href="tel:${escapeHtml(r.phone)}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/></svg>
+        ${escapeHtml(r.phone)}
+      </a>`
+    );
+    if (r.website) {
+      const host = (() => {
+        try { return new URL(r.website).hostname.replace(/^www\./, ""); }
+        catch { return r.website; }
+      })();
+      actions.push(
+        `<a class="action" href="${escapeHtml(r.website)}" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+          ${escapeHtml(truncate(host, 22))}
+        </a>`
+      );
+    }
+    (r.emails || []).slice(0, 3).forEach((e) => {
+      actions.push(
+        `<a class="action email" href="mailto:${escapeHtml(e)}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          ${escapeHtml(truncate(e, 28))}
+        </a>`
+      );
+    });
+    const extraEmails = (r.emails || []).length - 3;
+    if (extraEmails > 0) {
+      actions.push(`<span class="action">+${extraEmails} more</span>`);
+    }
+
     return `
       <div class="result">
-        <h3>${escapeHtml(r.name || "Unnamed")}</h3>
-        <p class="meta">${escapeHtml(r.category || "")}${r.category && r.address ? " · " : ""}${escapeHtml(r.address || "")}</p>
-        <div class="pills">
-          ${rating}${phone}${web}${emails}
+        <div class="result-head">
+          <span class="result-idx">${idx}</span>
+          <h3 class="result-name">${escapeHtml(r.name || "Unnamed business")}</h3>
+          ${rating}
         </div>
+        ${meta ? `<div class="result-meta">${meta}</div>` : ""}
+        ${actions.length ? `<div class="actions">${actions.join("")}</div>` : ""}
       </div>
     `;
   }

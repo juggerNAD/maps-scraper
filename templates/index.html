@@ -369,6 +369,51 @@
     color: var(--text-3);
   }
 
+  /* ── Progress control buttons (Pause / Stop) ────────────────── */
+  .progress-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid var(--hairline);
+    background: var(--bg-soft);
+  }
+  .ctrl-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 11px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.15s;
+  }
+  .ctrl-btn:hover:not(:disabled) {
+    border-color: var(--hairline-2);
+    background: #2a2a2a;
+  }
+  .ctrl-btn:active:not(:disabled) { transform: scale(0.97); }
+  .ctrl-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .ctrl-btn svg { width: 12px; height: 12px; }
+  .ctrl-btn.resume {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .ctrl-btn.resume:hover:not(:disabled) { background: #d5ff33; }
+  .ctrl-btn.danger:hover:not(:disabled) {
+    border-color: rgba(255,122,133,0.3);
+    color: var(--danger);
+  }
+  .pulse-dot.paused {
+    background: var(--warning);
+    animation: none;
+  }
+
   /* ── Result cards ───────────────────────────────────────────── */
   .results {
     padding: 0 20px;
@@ -582,7 +627,7 @@
 
       <!-- Suggestion chips -->
       <div class="chips" id="chips">
-        <button class="chip" data-q="dentists in Australia">Dentists in Australia</button>
+        <button class="chip" data-q="dentists in Toronto">Dentists in Toronto</button>
         <button class="chip" data-q="construction company in Los Angeles">Construction in LA</button>
         <button class="chip" data-q="real estate agents in Sydney">Realtors in Sydney</button>
         <button class="chip" data-q="law firms in London">Law firms · London</button>
@@ -608,6 +653,16 @@
             <div class="stat"><div class="v" id="stat-scraped">0</div><div class="l">Scraped</div></div>
             <div class="stat"><div class="v" id="stat-total">0</div><div class="l">Found</div></div>
             <div class="stat"><div class="v" id="stat-emails">0</div><div class="l">Emails</div></div>
+          </div>
+          <div class="progress-controls" id="progress-controls">
+            <button class="ctrl-btn" id="pause-btn">
+              <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+              <span id="pause-btn-label">Pause</span>
+            </button>
+            <button class="ctrl-btn danger" id="stop-btn">
+              <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+              Stop
+            </button>
           </div>
         </div>
       </div>
@@ -679,6 +734,45 @@
   $("export").addEventListener("click", () => {
     if (currentJobId) window.location.href = `/api/export/${currentJobId}`;
   });
+  $("pause-btn").addEventListener("click", togglePause);
+  $("stop-btn").addEventListener("click", stopScrape);
+
+  async function sendControl(action) {
+    if (!currentJobId) return;
+    try {
+      await fetch(`/api/control/${currentJobId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+    } catch (e) {
+      toast("Couldn't reach server");
+    }
+  }
+
+  async function togglePause() {
+    const btn = $("pause-btn");
+    const isPaused = btn.classList.contains("resume");
+    if (isPaused) {
+      // Currently shows "Resume" → user wants to resume
+      await sendControl("resume");
+      btn.classList.remove("resume");
+      $("pause-btn-label").textContent = "Pause";
+      toast("Resumed");
+    } else {
+      // Currently shows "Pause" → user wants to pause
+      await sendControl("pause");
+      btn.classList.add("resume");
+      $("pause-btn-label").textContent = "Resume";
+      toast("Paused — current business will finish first");
+    }
+  }
+
+  async function stopScrape() {
+    if (!confirm("Stop the scrape? Already-collected leads will be kept.")) return;
+    await sendControl("stop");
+    toast("Stopping…");
+  }
 
   document.querySelectorAll(".chip").forEach((c) => {
     c.addEventListener("click", () => {
@@ -698,6 +792,10 @@
     $("empty").style.display = "block";
     $("export").disabled = true;
     $("go").disabled = false;
+    $("pause-btn").disabled = false;
+    $("pause-btn").classList.remove("resume");
+    $("pause-btn-label").textContent = "Pause";
+    $("stop-btn").disabled = false;
     $("q").value = "";
     $("q").focus();
   }
@@ -733,6 +831,11 @@
     $("export").disabled = true;
     $("pulse").className = "pulse-dot";
     $("progress-label").textContent = "In progress";
+    // Reset control buttons to active "Pause" state
+    $("pause-btn").disabled = false;
+    $("pause-btn").classList.remove("resume");
+    $("pause-btn-label").textContent = "Pause";
+    $("stop-btn").disabled = false;
 
     // Auto-scroll the phone body so the progress card is in view —
     // otherwise on tall hero + small viewport the user sees nothing happen.
@@ -780,6 +883,9 @@
         clearInterval(pollTimer);
         clearInterval(elapsedTimer);
         $("go").disabled = false;
+        // Job is finished — disable the pause/stop buttons (they have no effect)
+        $("pause-btn").disabled = true;
+        $("stop-btn").disabled = true;
         if (job.status === "error") {
           $("pulse").className = "pulse-dot error";
           $("status-title").textContent = "Failed";
@@ -821,11 +927,8 @@
       lastRenderedCount = results.length;
       $("results-head").style.display = results.length > 0 ? "flex" : "none";
       $("results-count").textContent = String(results.length).padStart(2, "0");
-      // pass index so numbering renders, append rather than wipe to preserve scroll
       $("results").innerHTML = results.map((r, i) => renderResult(r, i)).join("");
 
-      // When the first result appears, scroll the phone body to bring
-      // the results section into view so the user actually sees activity.
       if (wasFirst) {
         setTimeout(() => {
           const head = $("results-head");
@@ -834,10 +937,25 @@
       }
     }
 
-    if (job.status === "running") {
+    // Sync pause state from server (in case user paused on another device, or
+    // resume not yet applied).
+    if (job.status === "paused") {
+      $("pulse").className = "pulse-dot paused";
+      $("status-title").textContent = "Paused";
+      $("progress-label").textContent = "Paused";
+      // make sure button shows "Resume"
+      $("pause-btn").classList.add("resume");
+      $("pause-btn-label").textContent = "Resume";
+    } else if (job.status === "running") {
+      $("pulse").className = "pulse-dot";
       $("status-title").textContent = scraped > 0
         ? `Scraping business ${scraped} of ${total}`
         : "Discovering listings";
+      // button shows "Pause" while running
+      if ($("pause-btn").classList.contains("resume")) {
+        $("pause-btn").classList.remove("resume");
+        $("pause-btn-label").textContent = "Pause";
+      }
     }
   }
 

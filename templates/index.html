@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0b1220" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>Maps Lead Scout</title>
+<link rel="manifest" href="data:application/json,{%22name%22:%22Maps%20Lead%20Scout%22,%22short_name%22:%22Leads%22,%22display%22:%22standalone%22,%22background_color%22:%22%230b1220%22,%22theme_color%22:%22%230b1220%22,%22start_url%22:%22/%22,%22icons%22:[]}" />
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: #131c30;
+    --panel-2: #1a2540;
+    --border: #25324d;
+    --text: #e8edf7;
+    --muted: #8a96b2;
+    --accent: #4f8cff;
+    --accent-2: #3568d4;
+    --success: #2bd47b;
+    --danger: #ff5d6c;
+    --pill: #233152;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #06080f;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* === Phone frame ===
+     On desktop: visible 9:16 phone mockup centered.
+     On mobile: fills the whole screen, no frame. */
+  .stage {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(1200px 800px at 20% 0%, #16213c 0%, transparent 60%),
+      radial-gradient(1000px 600px at 80% 100%, #1a1f3c 0%, transparent 60%),
+      #06080f;
+  }
+  .phone {
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  @media (min-width: 700px) {
+    .phone {
+      aspect-ratio: 9 / 16;
+      width: auto;
+      height: 92vh;
+      max-height: 900px;
+      border-radius: 38px;
+      border: 10px solid #0a0d18;
+      box-shadow:
+        0 50px 80px -20px rgba(0,0,0,0.7),
+        0 0 0 1px #1f2940 inset;
+    }
+    .phone::before {
+      content: "";
+      position: absolute;
+      top: 12px; left: 50%;
+      transform: translateX(-50%);
+      width: 110px; height: 26px;
+      background: #06080f;
+      border-radius: 16px;
+      z-index: 50;
+    }
+  }
+
+  /* === Status bar === */
+  .statusbar {
+    height: 34px;
+    flex: 0 0 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .statusbar .right { display: flex; gap: 6px; align-items: center; }
+  .signal-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text); display: inline-block; }
+
+  /* === App header === */
+  .appbar {
+    padding: 14px 20px 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, var(--accent), #6aa1ff);
+    display: grid; place-items: center;
+    font-weight: 800;
+    font-size: 18px;
+    color: white;
+    box-shadow: 0 6px 16px -6px var(--accent);
+  }
+  .appbar h1 {
+    font-size: 19px; margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .appbar p {
+    margin: 2px 0 0; font-size: 12px; color: var(--muted);
+  }
+
+  /* === Scroll body === */
+  .body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 12px 16px 24px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .body::-webkit-scrollbar { width: 0; }
+
+  /* === Form card === */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  input, select {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 13px 14px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s, background .15s;
+  }
+  input:focus, select:focus {
+    border-color: var(--accent);
+    background: #1c2848;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+
+  /* === Buttons === */
+  button {
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    color: white;
+    border: 0;
+    border-radius: 14px;
+    padding: 14px;
+    width: 100%;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 8px 20px -10px var(--accent);
+    transition: transform .08s ease;
+  }
+  button:active { transform: scale(0.985); }
+  button:disabled {
+    opacity: 0.5; cursor: not-allowed;
+    box-shadow: none;
+  }
+  button.ghost {
+    background: var(--panel-2);
+    color: var(--text);
+    box-shadow: none;
+    border: 1px solid var(--border);
+  }
+
+  /* === Progress === */
+  .progress {
+    margin-top: 12px;
+    background: var(--panel-2);
+    border-radius: 99px;
+    height: 8px;
+    overflow: hidden;
+  }
+  .progress > span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #6aa1ff);
+    width: 0%;
+    transition: width .4s ease;
+  }
+  .stage-line {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    min-height: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .stats {
+    display: flex; gap: 8px;
+    margin-top: 10px;
+  }
+  .stat {
+    flex: 1;
+    background: var(--panel-2);
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+  }
+  .stat b { display: block; font-size: 18px; color: var(--text); }
+  .stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+  /* === Result rows === */
+  .result {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .result h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    line-height: 1.25;
+  }
+  .result .meta { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+  .result .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pill {
+    background: var(--pill);
+    color: var(--text);
+    border-radius: 99px;
+    padding: 4px 10px;
+    font-size: 11px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .pill.email { background: #14352b; color: #6ee7a7; }
+  .pill.phone { background: #2b1f3d; color: #c1a9ff; }
+  .pill.web   { background: #1a2c4a; color: #8cbcff; }
+  .pill.rating{ background: #3a2a14; color: #ffc678; }
+
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 30px 10px;
+  }
+
+  .footer {
+    flex: 0 0 auto;
+    padding: 10px 16px 14px;
+    border-top: 1px solid var(--border);
+    background: rgba(11,18,32,.85);
+    backdrop-filter: blur(8px);
+  }
+  .footer .row { gap: 8px; }
+  .footer button { padding: 12px; font-size: 13px; }
+
+  .toast {
+    position: absolute; left: 50%; bottom: 88px;
+    transform: translateX(-50%) translateY(20px);
+    background: #25324d;
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 99px;
+    font-size: 12px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s, transform .2s;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <!-- status bar -->
+    <div class="statusbar">
+      <span id="clock">9:41</span>
+      <div class="right">
+        <span class="signal-dot"></span>
+        <span class="signal-dot"></span>
+        <span class="signal-dot"></span>
+        <span>5G</span>
+        <span>100%</span>
+      </div>
+    </div>
+
+    <!-- app bar -->
+    <div class="appbar">
+      <div class="logo">L</div>
+      <div>
+        <h1>Lead Scout</h1>
+        <p>Google Maps → contacts in one tap</p>
+      </div>
+    </div>
+
+    <!-- body -->
+    <div class="body" id="body">
+      <!-- Search form -->
+      <div class="card" id="form-card">
+        <div class="field">
+          <label for="q">Search query</label>
+          <input id="q" placeholder="dentists in Manila" autocomplete="off" />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="max">Limit</label>
+            <select id="max">
+              <option value="">All results</option>
+              <option value="10">10</option>
+              <option value="25" selected>25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <button id="go">Start scraping</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="card" id="progress-card" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong id="status-title">Working…</strong>
+          <span id="status-pct" style="font-size:12px;color:var(--muted)">0%</span>
+        </div>
+        <div class="progress"><span id="bar"></span></div>
+        <div class="stage-line" id="stage-line">Starting…</div>
+        <div class="stats">
+          <div class="stat"><b id="stat-scraped">0</b><span>Scraped</span></div>
+          <div class="stat"><b id="stat-total">0</b><span>Found</span></div>
+          <div class="stat"><b id="stat-emails">0</b><span>Emails</span></div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="results">
+        <div class="empty" id="empty">No results yet. Run a search to see leads here.</div>
+      </div>
+    </div>
+
+    <!-- footer actions -->
+    <div class="footer">
+      <div class="row">
+        <button class="ghost" id="reset">New search</button>
+        <button id="export" disabled>Export CSV</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+  // Clock in the status bar
+  function tickClock() {
+    const d = new Date();
+    const h = d.getHours() % 12 || 12;
+    const m = String(d.getMinutes()).padStart(2, "0");
+    document.getElementById("clock").textContent = `${h}:${m}`;
+  }
+  tickClock(); setInterval(tickClock, 30_000);
+
+  let currentJobId = null;
+  let pollTimer = null;
+
+  const $ = (id) => document.getElementById(id);
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 1800);
+  }
+
+  $("go").addEventListener("click", startScrape);
+  $("q").addEventListener("keydown", (e) => { if (e.key === "Enter") startScrape(); });
+  $("reset").addEventListener("click", resetUI);
+  $("export").addEventListener("click", () => {
+    if (currentJobId) window.location.href = `/api/export/${currentJobId}`;
+  });
+
+  function resetUI() {
+    if (pollTimer) clearInterval(pollTimer);
+    currentJobId = null;
+    $("progress-card").style.display = "none";
+    $("results").innerHTML = '<div class="empty" id="empty">No results yet. Run a search to see leads here.</div>';
+    $("export").disabled = true;
+    $("go").disabled = false;
+    $("q").value = "";
+    $("q").focus();
+  }
+
+  async function startScrape() {
+    const query = $("q").value.trim();
+    const max = $("max").value;
+    if (!query) { toast("Type a search first"); return; }
+
+    $("go").disabled = true;
+    $("progress-card").style.display = "block";
+    $("results").innerHTML = "";
+    $("bar").style.width = "0%";
+    $("status-pct").textContent = "0%";
+    $("status-title").textContent = "Working…";
+    $("stat-scraped").textContent = "0";
+    $("stat-total").textContent = "0";
+    $("stat-emails").textContent = "0";
+    $("stage-line").textContent = "Starting Playwright…";
+    $("export").disabled = true;
+
+    try {
+      const r = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, max_results: max || null }),
+      });
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      currentJobId = data.job_id;
+      pollTimer = setInterval(poll, 1500);
+    } catch (e) {
+      toast("Error: " + e.message);
+      $("go").disabled = false;
+    }
+  }
+
+  async function poll() {
+    if (!currentJobId) return;
+    try {
+      const r = await fetch(`/api/status/${currentJobId}`);
+      const job = await r.json();
+      if (!job) return;
+      renderJob(job);
+      if (job.status === "done" || job.status === "error") {
+        clearInterval(pollTimer);
+        $("go").disabled = false;
+        if (job.status === "error") {
+          $("status-title").textContent = "Failed";
+          $("stage-line").textContent = job.error || "Unknown error";
+        } else {
+          $("status-title").textContent = "Done";
+          $("export").disabled = (job.results || []).length === 0;
+          toast(`Done — ${(job.results || []).length} leads`);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function renderJob(job) {
+    const total = job.total || 0;
+    const scraped = job.scraped || 0;
+    const pct = total > 0 ? Math.min(100, Math.round((scraped / total) * 100)) : (job.status === "running" ? 5 : 0);
+    $("bar").style.width = pct + "%";
+    $("status-pct").textContent = pct + "%";
+    $("stage-line").textContent = job.stage || "";
+    $("stat-scraped").textContent = scraped;
+    $("stat-total").textContent = total;
+
+    const results = job.results || [];
+    let emailCount = 0;
+    results.forEach((r) => { emailCount += (r.emails || []).length; });
+    $("stat-emails").textContent = emailCount;
+
+    // Re-render only when count changed (cheap heuristic)
+    const container = $("results");
+    if (container.childElementCount !== results.length) {
+      container.innerHTML = results.map(renderResult).join("");
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s || "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  function renderResult(r) {
+    const emails = (r.emails || []).map(
+      (e) => `<a class="pill email" href="mailto:${escapeHtml(e)}">✉ ${escapeHtml(e)}</a>`
+    ).join("");
+    const phone = r.phone ? `<a class="pill phone" href="tel:${escapeHtml(r.phone)}">📞 ${escapeHtml(r.phone)}</a>` : "";
+    const web = r.website ? `<a class="pill web" href="${escapeHtml(r.website)}" target="_blank" rel="noopener">🌐 site</a>` : "";
+    const rating = r.rating ? `<span class="pill rating">★ ${escapeHtml(r.rating)} (${escapeHtml(r.reviews || "0")})</span>` : "";
+    return `
+      <div class="result">
+        <h3>${escapeHtml(r.name || "Unnamed")}</h3>
+        <p class="meta">${escapeHtml(r.category || "")}${r.category && r.address ? " · " : ""}${escapeHtml(r.address || "")}</p>
+        <div class="pills">
+          ${rating}${phone}${web}${emails}
+        </div>
+      </div>
+    `;
+  }
+</script>
+</body>
+</html>

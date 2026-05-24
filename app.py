@@ -148,6 +148,27 @@ def harvest_website(website_url, log):
 # ---------- Google Maps scraping with Playwright ----------
 
 def scrape_maps(query, job_id, max_results=None):
+    """Outer wrapper that catches any crash and writes it to the job
+    so the UI can display it instead of spinning forever."""
+    try:
+        _scrape_maps_inner(query, job_id, max_results)
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[{job_id}] FATAL: {tb}")
+        # Make the error human-readable on the UI
+        msg = str(e)
+        if "Executable doesn't exist" in msg:
+            msg = "Playwright browser not installed. Run: python -m playwright install chromium"
+        update_job(
+            job_id,
+            status="error",
+            stage="Scraper crashed",
+            error=f"{type(e).__name__}: {msg}",
+        )
+
+
+def _scrape_maps_inner(query, job_id, max_results=None):
     """Drive Google Maps, paginate by scrolling the results panel,
     open each result, extract fields."""
 

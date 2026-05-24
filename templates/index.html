@@ -627,7 +627,7 @@
 
       <!-- Suggestion chips -->
       <div class="chips" id="chips">
-        <button class="chip" data-q="dentists in Toronto">Dentists in Toronto</button>
+        <button class="chip" data-q="dentists in Australia">Dentists in Australia</button>
         <button class="chip" data-q="construction company in Los Angeles">Construction in LA</button>
         <button class="chip" data-q="real estate agents in Sydney">Realtors in Sydney</button>
         <button class="chip" data-q="law firms in London">Law firms · London</button>
@@ -857,6 +857,15 @@
       let data;
       try { data = JSON.parse(text); }
       catch { throw new Error(`Non-JSON response: ${text.slice(0, 120)}`); }
+
+      // 409 means another scrape is already running — attach to it
+      if (r.status === 409 && data.running_job_id) {
+        currentJobId = data.running_job_id;
+        toast("Attached to scrape already in progress");
+        pollTimer = setInterval(poll, 1500);
+        return;
+      }
+
       if (data.error) throw new Error(data.error);
       currentJobId = data.job_id;
       pollTimer = setInterval(poll, 1500);
@@ -867,6 +876,8 @@
       $("stage-line").textContent = e.message;
       $("progress-label").textContent = "Error";
       $("go").disabled = false;
+      $("pause-btn").disabled = true;
+      $("stop-btn").disabled = true;
       toast(e.message);
     }
   }

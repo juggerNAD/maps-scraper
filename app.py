@@ -61,6 +61,8 @@ def make_job(query):
             "results": [],
             "error": None,
             "started_at": time.time(),
+            "paused": False,
+            "stopped": False,
         }
     return job_id
 
@@ -148,23 +150,19 @@ def harvest_website(website_url, log):
 # ---------- Google Maps scraping with Playwright ----------
 
 def scrape_maps(query, job_id, max_results=None):
-    """Outer wrapper that catches any crash and writes it to the job
-    so the UI can display it instead of spinning forever."""
+    """Wrapper that catches any unhandled error and writes it to the job
+    so the frontend can display it instead of getting a silent failure."""
     try:
         _scrape_maps_inner(query, job_id, max_results)
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
         print(f"[{job_id}] FATAL: {tb}")
-        # Make the error human-readable on the UI
-        msg = str(e)
-        if "Executable doesn't exist" in msg:
-            msg = "Playwright browser not installed. Run: python -m playwright install chromium"
         update_job(
             job_id,
             status="error",
             stage="Scraper crashed",
-            error=f"{type(e).__name__}: {msg}",
+            error=f"{type(e).__name__}: {e}",
         )
 
 
@@ -185,6 +183,14 @@ def _scrape_maps_inner(query, job_id, max_results=None):
             user_agent=USER_AGENT,
             viewport={"width": 1280, "height": 900},
             locale="en-US",
+        )
+        # Block images / fonts / media to save memory on Render free tier.
+        # Google Maps still renders + functions without them.
+        context.route(
+            "**/*",
+            lambda route: route.abort()
+            if route.request.resource_type in ("image", "font", "media")
+            else route.continue_(),
         )
         page = context.new_page()
 
@@ -261,10 +267,38 @@ def _scrape_maps_inner(query, job_id, max_results=None):
 
         results = []
         for i, url in enumerate(urls, 1):
+            # --- Pause / stop check (between businesses, the natural breakpoint) ---
+            current = get_job(job_id) or {}
+            if current.get("stopped"):
+                log("Stopped by user.")
+                break
+            if current.get("paused"):
+                update_job(job_id, status="paused", stage="Paused — tap Resume to continue")
+                # Block here until user resumes or stops
+                while True:
+                    time.sleep(1)
+                    j = get_job(job_id) or {}
+                    if j.get("stopped"):
+                        break
+                    if not j.get("paused"):
+                        update_job(job_id, status="running")
+                        log(f"Resuming…")
+                        break
+                if (get_job(job_id) or {}).get("stopped"):
+                    log("Stopped by user.")
+                    break
+
             log(f"[{i}/{len(urls)}] Opening listing…")
             try:
                 page.goto(url, wait_until="domcontentloaded", timeout=30_000)
-                time.sleep(random.uniform(1.0, 1.8))
+                # Wait for the main panel to actually render — on slower hosts
+                # (Render free tier) domcontentloaded fires before the side
+                # panel is populated.
+                try:
+                    page.wait_for_selector('div[role="main"]', timeout=8000)
+                except Exception:
+                    pass
+                time.sleep(random.uniform(1.5, 2.5))
                 data = extract_place_details(page)
 
                 # Visit the website to find emails
@@ -282,10 +316,15 @@ def _scrape_maps_inner(query, job_id, max_results=None):
 
         browser.close()
 
+        final_stage = (
+            f"Stopped — {len(results)} businesses scraped."
+            if (get_job(job_id) or {}).get("stopped")
+            else f"Finished — {len(results)} businesses scraped."
+        )
         update_job(
             job_id,
             status="done",
-            stage=f"Finished — {len(results)} businesses scraped.",
+            stage=final_stage,
             results=results,
         )
 
@@ -303,11 +342,68 @@ def extract_place_details(page):
         "maps_url": page.url,
     }
 
-    # Name — h1 in the side panel
+    # ---- Name extraction with multiple fallbacks ----
+    # Google A/B tests Maps layouts, especially across regions and IPs.
+    # We try in order: wait for h1 → other selectors → page title → URL.
+    name = ""
+
+    # Strategy 1: wait briefly for the h1 to actually render, then read it.
     try:
-        out["name"] = page.locator("h1").first.inner_text(timeout=4000).strip()
+        page.wait_for_selector("h1", timeout=6000, state="visible")
+        candidate = page.locator("h1").first.inner_text(timeout=2000).strip()
+        if candidate and candidate.lower() not in ("results", "google maps"):
+            name = candidate
     except Exception:
         pass
+
+    # Strategy 2: other selectors Google has used historically.
+    if not name:
+        for selector in [
+            'div[role="main"] h1',
+            'h1.DUwDvf',
+            'h1.fontHeadlineLarge',
+            'div.fontHeadlineLarge',
+            'div[aria-label][role="main"]',  # the main panel often has aria-label = business name
+        ]:
+            try:
+                el = page.locator(selector).first
+                if selector.endswith('[role="main"]'):
+                    candidate = (el.get_attribute("aria-label", timeout=1500) or "").strip()
+                else:
+                    candidate = el.inner_text(timeout=1500).strip()
+                if candidate and 2 < len(candidate) < 200 and candidate.lower() not in ("results", "google maps"):
+                    name = candidate
+                    break
+            except Exception:
+                continue
+
+    # Strategy 3: parse the URL — Google Maps puts the business name in the path.
+    # Example: /maps/place/Joe's+Pizza+%26+Co/@40.7,-74,17z/...
+    if not name:
+        try:
+            from urllib.parse import unquote
+            url_part = page.url.split("/maps/place/")[-1].split("/@")[0].split("/data=")[0]
+            candidate = unquote(url_part).replace("+", " ").strip()
+            if candidate and 2 < len(candidate) < 200:
+                name = candidate
+        except Exception:
+            pass
+
+    # Strategy 4: window/document title, stripping " - Google Maps" suffix.
+    if not name:
+        try:
+            title = page.title()
+            if title and "Google Maps" not in title.strip():
+                name = title.split(" - ")[0].strip()
+            elif title:
+                # Title like "Joe's Pizza - Google Maps"
+                cleaned = title.replace("- Google Maps", "").strip(" -")
+                if cleaned and cleaned.lower() != "google maps":
+                    name = cleaned
+        except Exception:
+            pass
+
+    out["name"] = name
 
     # Rating + reviews count (e.g. "4.6  (123)")
     try:
@@ -370,24 +466,39 @@ def index():
 
 @app.route("/api/scrape", methods=["POST"])
 def api_scrape():
-    data = request.get_json() or {}
-    query = (data.get("query") or "").strip()
-    max_results = data.get("max_results")
     try:
-        max_results = int(max_results) if max_results else None
-    except (TypeError, ValueError):
-        max_results = None
+        data = request.get_json(silent=True) or {}
+        query = (data.get("query") or "").strip()
+        max_results = data.get("max_results")
+        try:
+            max_results = int(max_results) if max_results else None
+        except (TypeError, ValueError):
+            max_results = None
 
-    if not query:
-        return jsonify({"error": "Query is required"}), 400
+        if not query:
+            return jsonify({"error": "Query is required"}), 400
 
-    job_id = make_job(query)
-    t = threading.Thread(
-        target=scrape_maps, args=(query, job_id, max_results), daemon=True
-    )
-    t.start()
-    update_job(job_id, status="running")
-    return jsonify({"job_id": job_id})
+        job_id = make_job(query)
+        t = threading.Thread(
+            target=scrape_maps, args=(query, job_id, max_results), daemon=True
+        )
+        t.start()
+        update_job(job_id, status="running")
+        return jsonify({"job_id": job_id})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Server error: {type(e).__name__}: {e}"}), 500
+
+
+@app.errorhandler(500)
+def handle_500(e):
+    return jsonify({"error": "Server error (500). Check the Render logs."}), 500
+
+
+@app.errorhandler(404)
+def handle_404(e):
+    return jsonify({"error": "Not found"}), 404
 
 
 @app.route("/api/status/<job_id>")
@@ -396,6 +507,25 @@ def api_status(job_id):
     if not job:
         return jsonify({"error": "not found"}), 404
     return jsonify(job)
+
+
+@app.route("/api/control/<job_id>", methods=["POST"])
+def api_control(job_id):
+    """Pause, resume, or stop a running job. Body: {"action": "pause|resume|stop"}"""
+    job = get_job(job_id)
+    if not job:
+        return jsonify({"error": "not found"}), 404
+    body = request.get_json(silent=True) or {}
+    action = (body.get("action") or "").lower()
+    if action == "pause":
+        update_job(job_id, paused=True)
+    elif action == "resume":
+        update_job(job_id, paused=False)
+    elif action == "stop":
+        update_job(job_id, stopped=True, paused=False)
+    else:
+        return jsonify({"error": "Unknown action. Use pause/resume/stop."}), 400
+    return jsonify({"ok": True, "action": action})
 
 
 @app.route("/api/export/<job_id>")

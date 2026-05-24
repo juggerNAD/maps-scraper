@@ -35,9 +35,10 @@ EMAIL_REGEX = re.compile(
 )
 
 # Common pages that tend to contain contact info.
+# Ordered by hit rate — homepage + /contact catch ~80% of emails.
+# Trimmed from 10 to 4 to keep per-business time under ~5 seconds.
 CONTACT_PATHS = [
-    "/contact", "/contact-us", "/contactus", "/about", "/about-us",
-    "/team", "/our-team", "/staff", "/people", "/leadership",
+    "/contact", "/contact-us", "/about", "/about-us",
 ]
 
 USER_AGENT = (
@@ -81,7 +82,7 @@ def get_job(job_id):
 
 # ---------- Email + executive harvesting from a website ----------
 
-def fetch(url, timeout=10):
+def fetch(url, timeout=6):
     try:
         r = requests.get(
             url,
@@ -140,9 +141,10 @@ def harvest_website(website_url, log):
         if html:
             for e in extract_emails_from_html(html):
                 emails.add(e)
-        if len(emails) >= 5:  # plenty
+        # Bail out early once we have a couple — diminishing returns
+        if len(emails) >= 2:
             break
-        time.sleep(random.uniform(0.3, 0.8))
+        time.sleep(random.uniform(0.2, 0.5))
 
     return sorted(emails)
 
@@ -266,6 +268,7 @@ def _scrape_maps_inner(query, job_id, max_results=None):
         update_job(job_id, total=len(urls))
 
         results = []
+        skipped = 0
         for i, url in enumerate(urls, 1):
             # --- Pause / stop check (between businesses, the natural breakpoint) ---
             current = get_job(job_id) or {}
@@ -290,15 +293,14 @@ def _scrape_maps_inner(query, job_id, max_results=None):
 
             log(f"[{i}/{len(urls)}] Opening listing…")
             try:
-                page.goto(url, wait_until="domcontentloaded", timeout=30_000)
-                # Wait for the main panel to actually render — on slower hosts
-                # (Render free tier) domcontentloaded fires before the side
-                # panel is populated.
+                # 20s is enough — if a listing takes longer than that, it's
+                # almost always Google soft-blocking us; skip and move on.
+                page.goto(url, wait_until="domcontentloaded", timeout=20_000)
                 try:
-                    page.wait_for_selector('div[role="main"]', timeout=8000)
+                    page.wait_for_selector('div[role="main"]', timeout=6000)
                 except Exception:
                     pass
-                time.sleep(random.uniform(1.5, 2.5))
+                time.sleep(random.uniform(1.2, 2.0))
                 data = extract_place_details(page)
 
                 # Visit the website to find emails
@@ -311,7 +313,14 @@ def _scrape_maps_inner(query, job_id, max_results=None):
                 results.append(data)
                 update_job(job_id, scraped=i, results=results.copy())
             except Exception as e:
-                print(f"  error on {url}: {e}")
+                skipped += 1
+                # Bump scraped counter so progress bar keeps moving even on skips
+                update_job(
+                    job_id,
+                    scraped=i,
+                    stage=f"Skipped listing {i} (took too long) — {skipped} skipped so far",
+                )
+                print(f"  skip {i}: {type(e).__name__}: {str(e)[:120]}")
                 continue
 
         browser.close()
@@ -477,6 +486,20 @@ def api_scrape():
 
         if not query:
             return jsonify({"error": "Query is required"}), 400
+
+        # Prevent concurrent scrapes — free tier RAM only fits one Chromium.
+        # Starting a second one while another is alive guarantees a crash.
+        with JOBS_LOCK:
+            running = [
+                j for j in JOBS.values()
+                if j.get("status") in ("queued", "running", "paused")
+            ]
+        if running:
+            existing = running[0]
+            return jsonify({
+                "error": "Another scrape is already running. Wait for it to finish or stop it first.",
+                "running_job_id": existing["id"],
+            }), 409
 
         job_id = make_job(query)
         t = threading.Thread(
